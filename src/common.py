@@ -52,9 +52,12 @@ class Reporter:
 
     def __call__(self, text=""):
         """打印一行（同时进文件和屏幕）"""
-        print(text)
+        print(text, flush=True)
         if self.fh:
             self.fh.write(str(text) + "\n")
+            # 立即刷盘：长时间运行的任务需要能从外部看到进度，
+            # 否则文件缓冲会导致日志"看起来卡住了"。
+            self.fh.flush()
 
     def title(self, text, width=70):
         """打印分节标题"""
