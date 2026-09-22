@@ -1,0 +1,19 @@
+# 依赖清单
+# 安装：pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+#
+# 说明：国内直连 PyPI 较慢，建议加清华镜像 -i 参数。
+
+# ---------- 第一阶段：单机数据处理与建模 ----------
+pandas>=3.0
+numpy>=2.0
+matplotlib>=3.10
+scikit-learn>=1.5
+
+# ---------- 第二阶段：分布式处理 ----------
+# 需要 JDK 17+（winget install Microsoft.OpenJDK.17）
+# PySpark 4.x 已不再支持 Java 8
+# pyspark>=4.0
+
+# ---------- 第三阶段：存储与接口 ----------
+# pymysql>=1.1
+# sqlalchemy>=2.0

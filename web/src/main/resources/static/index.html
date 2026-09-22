@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全国城市空气质量时空演变分析与预测系统</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div id="loading">正在加载数据…</div>
+
+<!-- ==================== 头部 ==================== -->
+<header>
+    <h1>全国城市空气质量<span>时空演变分析与预测</span>系统</h1>
+    <div class="sub">
+        数据范围 <b>2014–2018</b>　·　
+        <b>319</b> 个城市　·　
+        <b>1,233 万</b>条小时级监测记录　·　
+        基于 <b>Spark</b> 分布式处理　|　贵州师范大学 毕业设计
+    </div>
+</header>
+
+<!-- ==================== 概览卡片 ==================== -->
+<div class="cards">
+    <div class="card">
+        <div class="label">覆盖城市</div>
+        <div class="value accent" id="ov-city">-</div>
+    </div>
+    <div class="card">
+        <div class="label">监测记录</div>
+        <div class="value" id="ov-record">-</div>
+    </div>
+    <div class="card">
+        <div class="label">五年平均 AQI</div>
+        <div class="value" id="ov-aqi">-</div>
+    </div>
+    <div class="card">
+        <div class="label">城市 AQI 区间</div>
+        <div class="value" style="font-size:20px" id="ov-citymin">-</div>
+    </div>
+    <div class="card">
+        <div class="label">五年变化率</div>
+        <div class="value" id="ov-change">-</div>
+        <div class="label" id="ov-change-note" style="margin-top:2px"></div>
+    </div>
+    <div class="card">
+        <div class="label">预测误差 MAE（t+24）</div>
+        <div class="value" id="ov-mae24">-</div>
+    </div>
+    <div class="card">
+        <div class="label">预警准确率（t+24）</div>
+        <div class="value good" id="ov-acc24">-</div>
+    </div>
+</div>
+
+<!-- ==================== 筛选 ==================== -->
+<div class="filters" id="filters"></div>
+
+<!-- ==================== 地图 + 年度趋势 ==================== -->
+<div class="grid two">
+    <div class="panel">
+        <h3>全国城市空气质量分布</h3>
+        <div class="hint">
+            当前显示 <b id="map-count">-</b> 个城市　·　点大小与颜色表示五年平均 AQI
+            <b>（点击城市查看详情）</b>
+        </div>
+        <div class="chart tall" id="map"></div>
+    </div>
+    <div class="panel">
+        <h3>全国 AQI 年度趋势（固定 159 城）</h3>
+        <div class="hint">
+            只统计五年都有数据的城市 —— 否则 2014 年只有 159 城，口径不可比
+        </div>
+        <div class="chart" id="yearly" style="height:200px"></div>
+        <h3 style="margin-top:10px">日内小时变化</h3>
+        <div class="hint">早晚高峰排放集中，AQI 偏高</div>
+        <div class="chart" id="hourly" style="height:200px"></div>
+    </div>
+</div>
+
+<!-- ==================== 月度 + 污染物 ==================== -->
+<div class="grid three">
+    <div class="panel">
+        <h3>月度分布（采暖季 vs 非采暖季）</h3>
+        <div class="hint">红色为采暖季（11月–次年3月）</div>
+        <div class="chart short" id="monthly"></div>
+    </div>
+    <div class="panel">
+        <h3>首要污染物季节结构</h3>
+        <div class="hint">PM2.5 冬季主导，O₃ 夏季升高 —— 季节反转</div>
+        <div class="chart short" id="pollutant"></div>
+    </div>
+    <div class="panel">
+        <h3>省份 AQI 排名（污染最重 15 省）</h3>
+        <div class="hint">颜色按国标 AQI 色阶</div>
+        <div class="chart short" id="province"></div>
+    </div>
+</div>
+
+<!-- ==================== 城市详情（点击地图后出现） ==================== -->
+<div class="grid" style="padding-bottom:14px">
+    <div class="panel" id="detail-panel" style="display:none">
+        <h3 id="detail-title">城市详情</h3>
+        <div class="hint">柱状图为该城市的月度分布，折线为年度趋势</div>
+        <div class="chart" id="detail"></div>
+    </div>
+</div>
+
+<!-- ==================== 排名 + 热力图 ==================== -->
+<div class="grid half">
+    <div class="panel">
+        <h3>城市 AQI 排名 Top 20</h3>
+        <div class="hint">
+            前 5 名中若同时出现新疆与河北城市 —— 说明存在
+            <b>沙尘型</b>与<b>燃烧型</b>两类完全不同的污染
+        </div>
+        <div class="chart tall" id="ranking"></div>
+    </div>
+    <div class="panel">
+        <h3>城市 × 月份 AQI 热力图（污染最重 40 城）</h3>
+        <div class="hint">纵向看季节规律，横向比城市差异</div>
+        <div class="chart tall" id="heatmap"></div>
+    </div>
+</div>
+
+<!-- ==================== 预测结果 ==================== -->
+<div class="grid" style="padding-bottom:14px">
+    <div class="panel">
+        <h3>AQI 预测结果（提前 1 小时 / 提前 24 小时）</h3>
+        <div class="hint">
+            模型：GBDT（HistGradientBoosting）　·　
+            训练集 2017 年、测试集 2018 年（时序数据必须按时间切分，不能随机划分）　·　
+            <b>误差与预警都以 t+24 的真实值作基准</b>，不能用当前 AQI 去比
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr>
+                    <th>城市</th><th>时刻 t</th><th>AQI(t)</th>
+                    <th>预测 t+1</th><th>实际 t+24</th><th>预测 t+24</th>
+                    <th>t+24 误差</th><th>预警</th><th>污染概率</th><th>正确</th>
+                </tr>
+                </thead>
+                <tbody id="pred-body"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== 页脚 ==================== -->
+<footer>
+    <b>技术栈</b>：PySpark 4.2（数据清洗与聚合） → MySQL 8.0（结果存储） →
+    Spring Boot 2.7 + MyBatis（REST 接口） → ECharts 5.4（可视化）<br/>
+    <b>数据处理规模</b>：12,329,100 行 / 1.89 GB　·　
+    <b>已知数据陷阱</b>：日期为「日/月/年」格式、两列列名与内容对调、
+    2014 年城市覆盖不全、<code>o3_8h</code> 缺失 31.5%（详见项目文档）<br/>
+    <b>学术诚信声明</b>：本页所有指标均由后端从数据库实时查询得出，无硬编码数值。
+</footer>
+
+<script src="/js/echarts.min.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Java / Maven 构建产物
+# 注意：target/ 是可重新生成的编译输出（含 20+ MB 的 jar），绝不能提交。
+# 这是本项目踩过的坑：.gitignore 一开始只考虑了 Python，忘了 Java 的 target/。
+target/
+*.jar.original
+*.class
+
+# 中间数据（体积大，不入库；用 src/step*.py 可随时重新生成）
+data/
+
+# 运行日志
+output/_*.log
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 注意：以下内容【需要】提交
+#   output/figures/     论文配图
+#   output/report_*.txt 各步骤运行报告（数字来源可追溯）
+#   output/*.csv        聚合结果（MySQL 的数据源）
+#   web/src/            后端源码
+#   docs/               文档
+#   run_web.ps1         启动脚本
