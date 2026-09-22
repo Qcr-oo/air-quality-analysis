@@ -29,6 +29,7 @@
   agg_pollutant_season   [OK] 已重建
   agg_city_pollutant     [OK] 已重建
   fact_prediction        [OK] 已重建
+  agg_pollution_type     [OK] 已重建
   dim_aqi_grade          [OK] 已重建
 
 ======================================================================
@@ -57,6 +58,11 @@
     agg_pollutant_season 写入 12 行
     agg_city_pollutant 写入 1,239 行
     fact_prediction 写入 50,000 行
+    agg_pollution_type 写入 4 行
+      一般型    132 城   平均 AQI 69.7
+      沙尘型     26 城   平均 AQI 86.0
+      清洁型     93 城   平均 AQI 50.1
+      燃烧型     68 城   平均 AQI 97.1
     dim_aqi_grade  写入 6 行
 
 ======================================================================

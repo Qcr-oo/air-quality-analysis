@@ -147,6 +147,17 @@ CREATE TABLE IF NOT EXISTS fact_prediction (
     KEY idx_time (predict_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模型预测结果样例'
 """),
+    ("agg_pollution_type", """
+CREATE TABLE IF NOT EXISTS agg_pollution_type (
+    pollution_type VARCHAR(20) NOT NULL COMMENT '污染分型',
+    city_count     INT          COMMENT '城市数',
+    avg_aqi        DOUBLE       COMMENT '该类型城市的平均 AQI（2017-2018，与聚类同源）',
+    avg_pm_ratio   DOUBLE       COMMENT 'PM10/PM25 比值',
+    avg_sand_rate  DOUBLE       COMMENT '沙尘发生率',
+    avg_heat       DOUBLE       COMMENT '采暖效应',
+    PRIMARY KEY (pollution_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='污染分型统计（与论文表格同源）'
+"""),
     ("dim_aqi_grade", """
 CREATE TABLE IF NOT EXISTS dim_aqi_grade (
     grade_level VARCHAR(4) NOT NULL,
@@ -363,7 +374,32 @@ def main():
     except FileNotFoundError:
         r("    %-14s 跳过（未找到 prediction_sample.csv）" % "fact_prediction")
 
-    # 3.11 等级码表
+    # 3.11 污染分型统计
+    # [!] 为什么要单独存一张表，而不是用 SQL 现算？
+    #     聚类是在【2017–2018】两年数据上做的，而 dim_city.avg_aqi 是【五年】平均。
+    #     如果前端用 "GROUP BY pollution_type + AVG(avg_aqi)" 现算，
+    #     算出来的是"五年均值"，与论文表格里的"两年均值"对不上（实测差 3% 左右）。
+    #     所以这里把聚类时的统计值直接固化下来，保证 Web 与论文完全同源。
+    if cluster_file and "mllib" in os.path.basename(cluster_file):
+        cl = pd.read_csv(cluster_file, dtype={"city_code": str})
+        if "污染类型" in cl.columns and "avg_aqi" in cl.columns:
+            agg_type = (cl.groupby("污染类型")
+                        .agg(city_count=("city_code", "size"),
+                             avg_aqi=("avg_aqi", "mean"),
+                             avg_pm_ratio=("pm_ratio", "mean"),
+                             avg_sand_rate=("sand_rate", "mean"),
+                             avg_heat=("heat_effect", "mean"))
+                        .round(3).reset_index()
+                        .rename(columns={"污染类型": "pollution_type"}))
+            bulk_insert(conn, "agg_pollution_type", agg_type, r, "agg_pollution_type")
+            for _, row in agg_type.iterrows():
+                r("      %-6s %3d 城   平均 AQI %.1f"
+                  % (row["pollution_type"], row["city_count"], row["avg_aqi"]))
+    else:
+        r("    %-14s 跳过（用的是 Step 5 的聚类结果，无两年均值）"
+          % "agg_pollution_type")
+
+    # 3.12 等级码表
     grade = pd.DataFrame(AQI_GRADE_ROWS,
                          columns=["grade_level", "grade_name", "aqi_min",
                                   "aqi_max", "color"])

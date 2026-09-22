@@ -89,10 +89,22 @@ public interface AirQualityMapper {
             + "WHERE city_code = #{cityCode} ORDER BY n DESC")
     List<Map<String, Object>> cityPollutant(@Param("cityCode") String cityCode);
 
-    /** 城市污染分型统计 */
-    @Select("SELECT pollution_type AS pollutionType, COUNT(*) AS cityCount, "
-            + "ROUND(AVG(avg_aqi),1) AS avgAqi FROM dim_city "
-            + "GROUP BY pollution_type ORDER BY cityCount DESC")
+    /**
+     * 城市污染分型统计。
+     *
+     * <p><b>为什么直接读 agg_pollution_type，而不是现算？</b>
+     * <ul>
+     *   <li>聚类是在 <b>2017–2018</b> 两年数据上做的，而 {@code dim_city.avg_aqi} 是<b>五年</b>平均。</li>
+     *   <li>若写成 {@code GROUP BY pollution_type ... AVG(avg_aqi)}，
+     *       算出来是"五年均值"，与论文表格里的"两年均值"对不上（实测差约 3%）。</li>
+     *   <li>所以聚类时的统计值在入库阶段就被固化成一张表，保证 Web 与论文完全同源。</li>
+     * </ul>
+     */
+    @Select("SELECT pollution_type AS pollutionType, city_count AS cityCount, "
+            + "ROUND(avg_aqi, 1) AS avgAqi, ROUND(avg_pm_ratio, 2) AS avgPmRatio, "
+            + "ROUND(avg_sand_rate * 100, 1) AS avgSandRate, "
+            + "ROUND(avg_heat, 1) AS avgHeat "
+            + "FROM agg_pollution_type ORDER BY city_count DESC")
     List<Map<String, Object>> pollutionTypeStats();
 
     // ==================== 事实层 ====================
