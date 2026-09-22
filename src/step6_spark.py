@@ -480,6 +480,49 @@ def run_analysis(spark, r):
     r("    城市 × 污染物：%s 行" % format(len(city_pol), ","))
     r("    耗时：%.1f 秒" % (time.time() - t0))
 
+    # --- 4.6 分组对比（采暖季 / 工作日 / 沙尘）---
+    r("")
+    r("  【4.6 分组对比：采暖季 / 工作日 / 沙尘事件】")
+    r("""
+  这几项在 pandas 版里是用小样本算的。为了让论文里的数字口径统一，
+  这里用【全量数据】再算一遍 —— 否则同一章里混着抽样和全量的数字，
+  评委一问"这两个数怎么不一样"就说不清了。
+""")
+    t0 = time.time()
+    heat_cmp = (clean.groupBy("is_heating")
+                .agg(F.round(F.avg("AQI"), 2).alias("avg_aqi"),
+                     F.count("*").alias("n")).orderBy("is_heating").collect())
+    r("    采暖季 vs 非采暖季：")
+    for row in heat_cmp:
+        r("      %s：平均 AQI %.2f（%s 条）"
+          % ("采暖季(11月-次年3月)" if row["is_heating"] == 1 else "非采暖季        ",
+             row["avg_aqi"], format(row["n"], ",")))
+    if len(heat_cmp) == 2:
+        h = [x for x in heat_cmp if x["is_heating"] == 1][0]["avg_aqi"]
+        n = [x for x in heat_cmp if x["is_heating"] == 0][0]["avg_aqi"]
+        r("      采暖季高出 %.1f%%" % ((h - n) / n * 100))
+
+    wk_cmp = (clean.groupBy("is_weekend")
+              .agg(F.round(F.avg("AQI"), 2).alias("avg_aqi")).orderBy("is_weekend").collect())
+    r("    工作日 vs 周末：")
+    for row in wk_cmp:
+        r("      %s：平均 AQI %.2f"
+          % ("周末  " if row["is_weekend"] == 1 else "工作日", row["avg_aqi"]))
+
+    ss = (clean.groupBy("is_sandstorm")
+          .agg(F.round(F.avg("AQI"), 2).alias("avg_aqi"),
+               F.round(F.avg("PM10"), 1).alias("pm10"),
+               F.round(F.avg("PM25"), 1).alias("pm25"),
+               F.count("*").alias("n")).orderBy("is_sandstorm").collect())
+    r("    沙尘事件影响：")
+    for row in ss:
+        ratio = (row["pm10"] / row["pm25"]) if row["pm25"] else float("nan")
+        r("      %s：平均 AQI %.2f，PM10 %.1f，PM25 %.1f，PM10/PM25 = %.2f（%s 条）"
+          % ("沙尘天  " if row["is_sandstorm"] == 1 else "非沙尘天",
+             row["avg_aqi"], row["pm10"], row["pm25"], ratio,
+             format(row["n"], ",")))
+    r("    耗时：%.1f 秒" % (time.time() - t0))
+
     # ================================================================
     # 五、保存结果
     # ================================================================
