@@ -286,3 +286,77 @@ python step7_mysql.py     # -> output/report_mysql.txt
 ```
 
 **答辩前请务必重跑一遍并读一遍报告** —— 数据版本变了，数字就会变。
+
+---
+
+## 十、上传到 GitHub
+
+本地仓库**已经初始化并完成首次提交**，只差你的 GitHub 账号。三步：
+
+### 1. 在 GitHub 上新建一个空仓库
+
+打开 <https://github.com/new>：
+
+- **Repository name**：`air-quality-analysis`（或你喜欢的名字）
+- **Description**：基于 Spark 的全国城市空气质量时空演变分析与预测系统
+- **Public / Private**：建议先选 **Private**，答辩后再决定是否公开
+- ⚠️ **不要勾选** "Add a README file" / ".gitignore" / "license"
+  （本地已经有内容了，勾选会导致推送冲突）
+
+### 2. 把远程地址加到本地仓库
+
+在 GitHub 创建完成后，复制仓库地址，然后执行（**把地址换成你自己的**）：
+
+```powershell
+cd F:\myprogect\01-毕业设计\07-系统实现
+
+git remote add origin https://github.com/你的用户名/air-quality-analysis.git
+git branch -M main
+git push -u origin main
+```
+
+首次推送会要求登录。GitHub 已不支持密码推送，需要用 **Personal Access Token**：
+
+1. 打开 <https://github.com/settings/tokens>
+2. `Generate new token` → `classic`
+3. 勾选 **`repo`** 权限，设置有效期
+4. 生成后**复制那串 token**（只显示一次）
+5. 推送时用户名填 GitHub 用户名，**密码处粘贴 token**
+
+### 3. 验证
+
+```powershell
+git remote -v          # 查看远程地址
+git log --oneline      # 查看提交历史
+git status             # 应该是 "nothing to commit, working tree clean"
+```
+
+---
+
+### 后续如果改了代码
+
+```powershell
+git add -A
+git commit -m "描述你改了什么"
+git push
+```
+
+### ⚠️ 提交前务必确认这几样没被传上去
+
+`.gitignore` 已经配好，但**每次新增文件类型时都要检查一遍**：
+
+| 不该提交 | 原因 |
+|---|---|
+| `data/` | 中间数据，几十 MB，可随时用 `step*.py` 重新生成 |
+| `web/target/` | Maven 编译产物，含 20+ MB 的 jar |
+| `__pycache__/` | Python 字节码缓存 |
+| `output/_*.log` | 运行日志 |
+
+> **本项目踩过的坑**：`.gitignore` 最初只考虑了 Python，忘了 Java 的 `target/`，
+> 结果 `git add -A` 把 22.6 MB 的 jar 和一堆 `.class` 文件都暂存了。
+> **教训：`.gitignore` 要按项目涉及的所有语言来写，不能只想一种。**
+>
+> 检查方法（提交前跑一下，应该没有输出）：
+> ```powershell
+> git diff --cached --name-only | Select-String "target/|\.jar$|\.class$"
+> ```
