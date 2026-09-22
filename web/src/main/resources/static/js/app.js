@@ -520,6 +520,9 @@ async function loadHeatmap() {
 async function loadPredictions() {
     const rows = await api('/predictions?limit=300');
     const tbody = document.getElementById('pred-body');
+    // [!] 预测值是浮点数，模型输出会有十几位小数（如 230.105206748126）。
+    //     直接渲染出来页面会很难看，所以统一保留一位小数。
+    const f1 = v => (v == null ? '-' : Number(v).toFixed(1));
     tbody.innerHTML = rows.map(r => {
         const actual24 = r.actualAqiT24, p24 = r.predAqiT24;
         const err = Math.abs(p24 - actual24).toFixed(1);
@@ -530,10 +533,10 @@ async function loadPredictions() {
         return `<tr>
             <td>${r.cityLabel || '-'}</td>
             <td>${(r.predictTime || '').replace('T', ' ').slice(0, 16)}</td>
-            <td>${r.currentAqi}</td>
-            <td style="color:${aqiColor(r.predAqiT1)}">${r.predAqiT1}</td>
-            <td>${actual24}</td>
-            <td style="color:${aqiColor(p24)}">${p24}</td>
+            <td>${f1(r.currentAqi)}</td>
+            <td style="color:${aqiColor(r.predAqiT1)}">${f1(r.predAqiT1)}</td>
+            <td>${f1(actual24)}</td>
+            <td style="color:${aqiColor(p24)}">${f1(p24)}</td>
             <td>${err}</td>
             <td><span class="tag ${polluted ? 'bad' : 'ok'}">${polluted ? '污染' : '良好'}</span></td>
             <td>${(r.pollutedProb * 100).toFixed(1)}%</td>
