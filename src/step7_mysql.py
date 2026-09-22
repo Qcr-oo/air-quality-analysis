@@ -242,19 +242,45 @@ def main():
     # ---------- 导入 ----------
     r.title("三、导入数据")
 
-    # 3.1 城市维度（合并 K-Means 聚类结果）
+    # 3.1 城市维度（合并聚类结果）
     city = pd.read_csv(out_path("spark_city_agg.csv"), dtype={"city_code": str})
-    try:
-        clus = pd.read_csv(out_path("city_clusters.csv"), dtype={"city_code": str})
-        city = city.merge(
-            clus[["city_code", "污染类型", "类型"]].rename(
-                columns={"污染类型": "pollution_type", "类型": "cluster_id"}),
-            on="city_code", how="left")
-        r("  已合并城市污染分型（来自 Step 5 聚类）")
-    except FileNotFoundError:
+    r("""
+  【污染分型用哪一份？】
+    项目里有两套聚类结果：
+      city_clusters.csv         Step 5（sklearn，k=2 + 比值判型）
+      mllib_city_clusters.csv   Step 8（Spark MLlib，k=4）
+    两者结论方向一致，但城市数不同。
+
+    《设计方案》承诺的是"用 Spark MLlib 做 K-Means 聚类"，
+    所以这里【优先】加载 MLlib 的结果，保证 Web 页面与论文引用的数字一致。
+    如果 MLlib 结果不存在（还没跑 step8），才回退到 Step 5 的结果。
+""")
+    cluster_file, cluster_src = None, None
+    for fn, src in [("mllib_city_clusters.csv", "Step 8（Spark MLlib）"),
+                    ("city_clusters.csv", "Step 5（scikit-learn）")]:
+        p = out_path(fn)
+        if os.path.isfile(p):
+            cluster_file, cluster_src = p, src
+            break
+
+    if cluster_file:
+        clus = pd.read_csv(cluster_file, dtype={"city_code": str})
+        rename = {}
+        if "污染类型" in clus.columns:
+            rename["污染类型"] = "pollution_type"
+        if "类型" in clus.columns:
+            rename["类型"] = "cluster_id"
+        if "cluster_id" not in clus.columns and "prediction" in clus.columns:
+            rename["prediction"] = "cluster_id"
+        clus = clus.rename(columns=rename)
+        keep = [c for c in ["city_code", "pollution_type", "cluster_id"]
+                if c in clus.columns]
+        city = city.merge(clus[keep], on="city_code", how="left")
+        r("  已合并污染分型，来源：%s（%s）" % (cluster_src, os.path.basename(cluster_file)))
+    else:
         city["pollution_type"] = None
         city["cluster_id"] = None
-        r("  [!] 未找到 city_clusters.csv，跳过污染分型")
+        r("  [!] 未找到任何聚类结果文件，跳过污染分型")
     bulk_insert(conn, "dim_city", city, r, "dim_city")
 
     # 3.2 全国年度

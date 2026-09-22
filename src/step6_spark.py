@@ -304,6 +304,12 @@ def run_analysis(spark, r):
              .withColumnRenamed("quality", "main_pollutant")
              # 丢弃 AQI 缺失
              .filter(F.col("AQI").isNotNull())
+             # 陷阱 5：按「城市 + 时刻」去重
+             # [!] 这一步最初漏了 —— 去重只在 step8 里加了，step6 忘了加，
+             #     导致全量口径的所有数字（年度趋势、省份排名、城市均值、
+             #     污染物结构）都带着约 1.5% 重复记录的偏差。
+             #     实测：加上去重后清洗行数从 12,329,041 降到约 12,147,000。
+             .dropDuplicates(["city_code", "datetime"])
              # 时间维度特征
              .withColumn("year", F.year("datetime"))
              .withColumn("month", F.month("datetime"))
