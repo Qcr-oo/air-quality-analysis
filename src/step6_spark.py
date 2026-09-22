@@ -475,6 +475,22 @@ def run_analysis(spark, r):
               .orderBy("hour").collect())
     r("    小时分布：%s 行" % format(len(hourly), ","))
 
+    # 全国月度（供论文绘图使用）
+    # [!] 必须单独导出：论文的图必须和论文引用的数字同源，
+    #     否则会出现"图上画的是抽样数、文字引用的是全量数"的不一致。
+    monthly_nat = (clean.groupBy("month")
+                   .agg(F.round(F.avg("AQI"), 2).alias("avg_aqi"),
+                        F.count("*").alias("record_count"))
+                   .orderBy("month").collect())
+    r("    全国月度：%s 行" % format(len(monthly_nat), ","))
+
+    # 工作日 / 周末（供论文绘图）
+    weekend_nat = (clean.groupBy("is_weekend")
+                   .agg(F.round(F.avg("AQI"), 2).alias("avg_aqi"),
+                        F.count("*").alias("record_count"))
+                   .orderBy("is_weekend").collect())
+    r("    工作日周末：%s 行" % format(len(weekend_nat), ","))
+
     # 城市 × 首要污染物占比（用于前端筛选）
     city_pol = (clean.filter(F.col("main_pollutant") != "")
                 .withColumn("pollutant",
@@ -565,6 +581,8 @@ def run_analysis(spark, r):
             (city_year, "spark_city_year.csv", "城市×年"),
             (city_month, "spark_city_month.csv", "城市×月"),
             (hourly, "spark_hourly.csv", "小时分布"),
+            (monthly_nat, "spark_monthly.csv", "全国月度"),
+            (weekend_nat, "spark_weekend.csv", "工作日周末"),
             (city_pol, "spark_city_pollutant.csv", "城市×污染物")]:
         p = out_path(name)
         pd.DataFrame([dict(row.asDict()) for row in rows]).to_csv(

@@ -298,12 +298,19 @@ def main():
     cm = pd.read_csv(out_path("spark_city_month.csv"), dtype={"city_code": str})
     bulk_insert(conn, "agg_city_month", cm, r, "agg_city_month")
 
-    # 3.5 全国月度（由城市×月取算术平均得到，见下方说明）
-    nm = (cm.groupby("month")["avg_aqi"].mean().round(2)
-          .reset_index().rename(columns={"avg_aqi": "avg_aqi"}))
-    bulk_insert(conn, "agg_national_month", nm, r, "agg_national_month")
-    r("      [!] 说明：全国月度值 = 各城市月度均值的算术平均")
-    r("          （等价加权需按记录数加权，差异通常在 1%% 以内）")
+    # 3.5 全国月度
+    # [!] 优先用 spark_monthly.csv —— 那是【真正的全国月度均值】（按记录加权）。
+    #     早期版本是从 city_month 取算术平均近似的，与论文引用的数字会有偏差，
+    #     导致 Web 图表和论文对不上。只有该文件不存在时才回退到近似算法。
+    nat_month_path = out_path("spark_monthly.csv")
+    if os.path.isfile(nat_month_path):
+        nm = pd.read_csv(nat_month_path)[["month", "avg_aqi"]]
+        bulk_insert(conn, "agg_national_month", nm, r, "agg_national_month")
+        r("      来源：spark_monthly.csv（真实全国月度均值）")
+    else:
+        nm = cm.groupby("month")["avg_aqi"].mean().round(2).reset_index()
+        bulk_insert(conn, "agg_national_month", nm, r, "agg_national_month")
+        r("      [!] 未找到 spark_monthly.csv，回退为各城市月度均值的算术平均")
 
     # 3.6 小时分布
     hr = pd.read_csv(out_path("spark_hourly.csv"))

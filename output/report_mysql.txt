@@ -51,8 +51,7 @@
     agg_city_year  写入 1,432 行
     agg_city_month 写入 3,828 行
     agg_national_month 写入 12 行
-      [!] 说明：全国月度值 = 各城市月度均值的算术平均
-          （等价加权需按记录数加权，差异通常在 1%% 以内）
+      来源：spark_monthly.csv（真实全国月度均值）
     agg_hourly     写入 24 行
     agg_province   写入 31 行
     agg_pollutant_season 写入 12 行
