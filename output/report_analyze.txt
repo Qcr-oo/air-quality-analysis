@@ -166,10 +166,15 @@
 ======================================================================
 
   图表目录：F:\myprogect\01-毕业设计\07-系统实现\output\figures
+    fig10_mllib评估.png
     fig1_年际趋势.png
     fig2_月度规律.png
     fig3_日内变化.png
     fig4_省份排名.png
     fig5_污染物构成.png
+    fig6_回归评估.png
+    fig7_分类评估.png
+    fig8_特征重要性.png
+    fig9_城市聚类.png
 
   下一步：python step5_model.py （机器学习建模）
