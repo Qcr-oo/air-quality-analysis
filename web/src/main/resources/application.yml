@@ -13,13 +13,18 @@ spring:
     name: air-quality-web
 
   # ---------- 数据源 ----------
-  # 注意：本项目用的是【独立 MySQL 实例】（端口 3307），
-  #       不是系统里的 MySQL 服务（3306）。启动方式见 run_mysql.ps1
+  # 本项目使用【独立 MySQL 实例】（端口 3307），不是系统里的 MySQL 服务（3306）。
+  # 启动方式见 run_mysql.ps1
+  #
+  # 账号密码通过环境变量提供，不要把真实密码写进代码：
+  #   PowerShell : $env:DB_USERNAME="root"; $env:DB_PASSWORD="你的密码"
+  #   Linux/macOS: export DB_USERNAME=root DB_PASSWORD=你的密码
+  # 未设置时回退到本地开发默认值。
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://127.0.0.1:3307/air_quality?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: root
-    password: "123456"
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
