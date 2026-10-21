@@ -19,16 +19,28 @@ import sys
 
 def enable_utf8():
     """
-    把标准输出切换到 UTF-8 且不因编码失败而崩溃。
+    让标准输出遇到无法编码的字符时不要崩溃。
 
-    注意 errors="replace"：遇到控制台不支持的字符就写 "?"，
-    而不是抛异常。宁可显示得难看一点，也不能让脚本挂掉。
+    【重要修正 —— 这里踩过一个坑】
+      最初的写法是 s.reconfigure(encoding="utf-8", errors="replace")，
+      本意是解决 "⚠️ 等 emoji 导致 UnicodeEncodeError 让脚本崩溃" 的问题。
+
+      但这会带来一个更严重的副作用：
+        Windows 中文控制台的代码页是 GBK(936)，
+        如果 Python 强行输出 UTF-8 字节，控制台会按 GBK 去解码，
+        **中文全部变成乱码**（"北京" → "�������"）。
+
+      【正确做法】保持控制台的原生编码，只把错误处理改成 replace：
+        - 中文：用 GBK 输出 → 控制台按 GBK 解码 → 显示正常
+        - emoji 等 GBK 打不出的字符：降级成 "?"，而不是抛异常中断脚本
+
+      一句话：**只改"出错怎么办"，不要改"用什么编码"。**
     """
     for stream in ("stdout", "stderr"):
         s = getattr(sys, stream, None)
         if s is not None and hasattr(s, "reconfigure"):
             try:
-                s.reconfigure(encoding="utf-8", errors="replace")
+                s.reconfigure(errors="replace")   # 保持编码不变，只改错误处理
             except Exception:
                 pass
 
